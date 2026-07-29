@@ -1,0 +1,65 @@
+<launch>
+  <arg name="mir_type" default="mir_100" doc="The MiR variant. Can be 'mir_100' or 'mir_250' for now." />
+  <arg name="tf_prefix" default="" doc="TF prefix to use for all of MiR's TF frames" />
+  <arg name="mir_hostname" default="192.168.12.20" />
+
+  <param name="tf_prefix" type="string" value="$(arg tf_prefix)" />
+
+  <!-- URDF -->
+  <include file="$(find mir_description)/launch/upload_mir_urdf.launch">
+    <arg name="mir_type" value="$(arg mir_type)" />
+  </include>
+
+  <!-- Robot state publisher -->
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher">
+    <remap from="/tf"        to="tf_rss" />
+    <remap from="/tf_static" to="tf_static_rss" />
+  </node>
+
+  <!-- remove those TFs that are also published by the MiR to avoid conflicts -->
+  <node name="tf_remove_state_publisher_frames" pkg="mir_driver" type="tf_remove_child_frames.py" output="screen">
+    <remap from="tf_in"         to="tf_rss" />
+    <remap from="tf_out"        to="/tf" />
+    <remap from="tf_static_in"  to="tf_static_rss" />
+    <remap from="tf_static_out" to="/tf_static" />
+    <rosparam param="remove_frames">
+      - base_link
+      - front_laser_link
+      - back_laser_link
+      - camera_top_link
+      - camera_top_depth_optical_frame
+      - camera_floor_link
+      - camera_floor_depth_optical_frame
+      - imu_link
+    </rosparam>
+  </node>
+
+  <!-- MiR bridge, trimmed: no move_base_node/*, no move_base/*, no camera_floor
+       point clouds. Publishes /map directly (no disable_map branch) since we're
+       running our own map_server/amcl downstream and just need /map available
+       if anything still references it; drop this and the two remaps below if
+       you don't want the MiR's map at all. -->
+  <node name="mir_bridge" pkg="mir_driver" type="mir_bridge_no_movebase.py" output="screen">
+    <param name="hostname" value="$(arg mir_hostname)" />
+    <param name="tf_prefix" value="$(arg tf_prefix)" />
+    <remap from="map" to="/map" />
+    <remap from="map_metadata" to="/map_metadata" />
+    <remap from="rosout" to="/rosout" />
+    <remap from="rosout_agg" to="/rosout_agg" />
+    <remap from="tf" to="/tf" />
+  </node>
+
+  <!-- REP-117 laser filters: keep only if your Nav2 costmaps consume the
+       *_rep117 topics; delete this block if you're consuming b_scan/f_scan
+       (or the merged /scan) directly. -->
+  <node name="b_rep117_laser_filter" pkg="mir_driver" type="rep117_filter.py" output="screen">
+    <remap from="scan" to="b_scan" />
+    <remap from="scan_filtered" to="b_scan_rep117" />
+  </node>
+  <node name="f_rep117_laser_filter" pkg="mir_driver" type="rep117_filter.py" output="screen">
+    <remap from="scan" to="f_scan" />
+    <remap from="scan_filtered" to="f_scan_rep117" />
+  </node>
+
+  <node name="fake_mir_joint_publisher" pkg="mir_driver" type="fake_mir_joint_publisher.py" output="screen" />
+</launch>
