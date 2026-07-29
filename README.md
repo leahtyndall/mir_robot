@@ -69,13 +69,7 @@ wget http://packages.ros.org/ros.key -O - | sudo apt-key add -
 sudo apt-get update -qq
 ```
 
-### Binary install
 
-For a binary install, it suffices to run this command:
-
-```bash
-sudo apt install ros-noetic-mir-robot
-```
 
 See the tables at the end of this README for a list of ROS distros for which
 binary packages are available.
@@ -91,11 +85,11 @@ mkdir -p ~/catkin_ws/src
 cd ~/catkin_ws/src/
 
 # clone mir_robot into the catkin workspace
-git clone -b noetic https://github.com/DFKI-NI/mir_robot.git
+git clone -b noetic https://github.com/leahtyndall/mir_robot.git
 
 # use rosdep to install all dependencies (including ROS itself)
 sudo apt-get update -qq
-sudo apt-get install -qq -y python-rosdep
+sudo apt-get install -y python3-rosdep
 sudo rosdep init
 rosdep update
 rosdep install --from-paths ./ -i -y --rosdistro noetic
